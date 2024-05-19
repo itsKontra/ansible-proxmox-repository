@@ -39,7 +39,7 @@
       when: not out.found
     - name: Check if reboot is needed
       register: reboot_required_file
-      stat: path=/var/run/reboot-required get_md5=no
+      stat: path=/var/run/reboot-required
     - name: Notify about reboot
       reboot:
         msg: "Reboot initiated by Ansible for kernel updates"
