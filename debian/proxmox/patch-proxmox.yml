@@ -22,15 +22,6 @@
         name: vim, curl, wget, unattended-upgrades, fuse-overlayfs
     - name: Check if subscription dialog is disabled
       lineinfile:
-        dest: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
-        state: present
-        regexp: 'Ext.Msg.show\(\{\s+title: gettext\(''No valid sub/'
-        line: 'PasswordAuthentication no'
-        validate: 'sshd -t -f %s'
-      notify:
-        - restart-sshd
-    - name: Check if subscription dialog is disabled
-      lineinfile:
         path: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
         regexp: 'void\(\{ \/\/Ext.Msg.show.*'
         state: absent
