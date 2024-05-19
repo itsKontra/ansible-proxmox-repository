@@ -10,7 +10,7 @@
 
     - name: Check if reboot is needed
       register: reboot_required_file
-      stat: path=/var/run/reboot-required get_md5=name
+      stat: path=/var/run/reboot-required get_md5
 
     - name: Notify about reboot
       reboot:
