@@ -3,20 +3,58 @@
   hosts:
     - proxmox
   tasks:
-    - name: add pve-no-subscription repository
+    - name: Add pve-no-subscription repository
       apt_repository:
         repo: deb http://download.proxmox.com/debian/pve {{ ansible_distribution_release }} pve-no-subscription
         state: present
         update_cache: no
-    - name: remove pve-enterprise repository
+    - name: Remove pve-enterprise repository
       apt_repository:
         repo: deb https://enterprise.proxmox.com/debian/pve {{ ansible_distribution_release }} pve-enterprise
         state: absent
         update_cache: no
-    - name: update pkg cache and dist-upgrade
+    - name: Update pkg cache and dist-upgrade
       apt:
         update_cache: yes
         upgrade: 'dist'
-    - name: install additional packages
+    - name: Install additional packages
       apt:
-        name: vim, curl, wget, unattended-upgrades
+        name: vim, curl, wget, unattended-upgrades, fuse-overlayfs
+    - name: Check if subscription dialog is disabled
+      lineinfile:
+        dest: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+        state: present
+        regexp: 'Ext.Msg.show\(\{\s+title: gettext\(''No valid sub/'
+        line: 'PasswordAuthentication no'
+        validate: 'sshd -t -f %s'
+      notify:
+        - restart-sshd
+    - name: Check if subscription dialog is disabled
+      lineinfile:
+        path: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+        regexp: 'void\(\{ \/\/Ext.Msg.show.*'
+        state: absent
+      check_mode: yes
+      changed_when: false
+      register: out
+    - name: Remove no subscription dialog
+      shell: |
+        sed -Ezi.backup "s/(Ext.Msg.show\(\{\s+title: gettext\('No valid sub)/void\(\{ \/\/\1/g" /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+      when: not out.found
+    - name: Restart pveproxy service
+      service:
+        name: pveproxy
+        state: restarted
+      when: not out.found
+    - name: Check if reboot is needed
+      register: reboot_required_file
+      stat: path=/var/run/reboot-required get_md5=no
+    - name: Notify about reboot
+      reboot:
+        msg: "Reboot initiated by Ansible for kernel updates"
+        connect_timeout: 5
+        reboot_timeout: 300
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: uptime
+      when: reboot_required_file.stat.exists
